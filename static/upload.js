@@ -1,3 +1,5 @@
+document.getElementById('loading').style.display = 'none';
+
 document.getElementById('uploadButton').addEventListener('click', function() {
     document.getElementById('fileInput').click();
 });
@@ -5,13 +7,14 @@ document.getElementById('clearButton').addEventListener('click', function() {
     totalItems = [];
     updateTable();
 });
-document.getElementById('midown').addEventListener('click', function() {
-    var heads = 'Item Code *,Qty *,Price *,Mrp *,Selling Price *,Discount 1 Type*,Discount 1*,Discount 2,Type*,Discount 2*,Calculate Expiry On?(MFG/EXP),EXP/MFG Date(DD-MM-YYYY)'
-    saveTextToFile(heads, 'new mi.csv');
-});
+// document.getElementById('midown').addEventListener('click', function() {
+//     var heads = 'Item Code *,Qty *,Price *,Mrp *,Selling Price *,Discount 1 Type*,Discount 1*,Discount 2,Type*,Discount 2*,Calculate Expiry On?(MFG/EXP),EXP/MFG Date(DD-MM-YYYY)'
+//     saveTextToFile(heads, 'new mi.csv');
+// });
 document.getElementById('fileInput').addEventListener('change', function(event) {
     const file = event.target.files[0];
     if (file) {
+        document.getElementById('loading').style.display = 'block';
         // Create a FormData object to hold the file data
         const formData = new FormData();
         formData.append('file', file);
@@ -27,11 +30,14 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
             // append to totalItems
             totalItems = totalItems.concat(data.data);
             updateTable();
+            document.getElementById('loading').style.display = 'none';
         })
         .catch(error => {
+            document.getElementById('loading').style.display = 'none';
             document.getElementById('output').innerText = 'Error uploading file: ' + error;
         });
     }
+    event.target.value = '';
 });
 
 headers = ['S.No', 'Name', 'MRP', 'Qty', 'Rate', 'Tax %', 'Unit Cost', 'Landing Cost', 'Amount', 'Tax Amount', 'Total'];
@@ -40,10 +46,11 @@ isTaxInclusive = false;
 invTotal = 0;
 invTax = 0;
 invAmount = 0;
-count = 0;
 round = (num) => Math.round(num * 100) / 100;
-
 function calculate() {
+    invTotal = 0;
+    invTax = 0;
+    invAmount = 0;
     for (const item of totalItems) {
         qty = parseFloat(item[2]);
         rate = parseFloat(item[3]);
@@ -55,14 +62,14 @@ function calculate() {
             uc = rate;
             lc = round(rate + rate * taxRate/100);
         }
-        item.append(uc);
-        item.append(lc);
+        item[5] = uc;
+        item[6] = lc;
         taxableAmount = round(uc * qty);
-        item.append(taxableAmount);
+        item[7] = taxableAmount;
         tax = round(taxableAmount * taxRate/100);
-        item.append(tax);
+        item[8] = tax;
         total = round(lc * qty);
-        item.append(total);
+        item[9] = total;
         invTax += tax;
         invAmount += taxableAmount;
         invTotal += total;
@@ -85,6 +92,7 @@ function updateTable() {
     }
     // Create the data rows
     const body = table.createTBody();
+    count = 0;
     for (const item of totalItems) {
         const row = body.insertRow();
         count++;
@@ -96,15 +104,9 @@ function updateTable() {
     }
     document.getElementById('output').innerHTML = '';
     // Display Inv Totals. In a text format
-    const invTotalDiv = document.createElement('div');
-    invTotalDiv.innerHTML = `<h4>Invoice Total: ${round(invTotal)}</h4>`;
-    document.getElementById('output').appendChild(invTotalDiv);
-    const invTaxDiv = document.createElement('div');
-    invTaxDiv.innerHTML = `<h4>Invoice Tax: ${round(invTax)}</h4>`;
-    document.getElementById('output').appendChild(invTaxDiv);
-    const invAmountDiv = document.createElement('div');
-    invAmountDiv.innerHTML = `<h4>Invoice Amount: ${round(invAmount)}</h4>`;
-    document.getElementById('output').appendChild(invAmountDiv);
+    const details = document.createElement('div');
+    details.innerHTML = `<h4>Invoice Total: ${round(invTotal)}; Invoice Tax: ${round(invTax)}; Invoice Amount: ${round(invAmount)}</h4>`;
+    document.getElementById('output').appendChild(details);
     
     // Clear the output div and add the table
     document.getElementById('output').appendChild(table);

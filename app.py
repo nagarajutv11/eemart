@@ -76,13 +76,11 @@ def process_file():
     mime_type, _ = mimetypes.guess_type(file.filename)
     file_path = f"./uploads/{file.filename}"
     file.save(file_path)
-    
-    prompt = "Extract the line items from this Invoice. Need all columns in a structured format suitable for CSV conversion."
-    
+
     if mime_type == 'application/pdf':
-        data = ie.process_pdf_file(file_path, prompt)
+        data = ie.process_pdf_file(file_path)
     elif mime_type in ['image/jpeg', 'image/png']:
-        data = ie.process_image_files([file_path], prompt)
+        data = ie.process_image_files([file_path])
     else:
         return jsonify({'error': 'File not supported ' + mime_type}), 400
         
