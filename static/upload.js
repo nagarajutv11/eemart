@@ -17,7 +17,7 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
         formData.append('file', file);
 
         // Use fetch to send the file to the server
-        fetch('/process', {
+        fetch('/upload-invoice', {
             method: 'POST',
             body: formData
         })

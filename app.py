@@ -3,7 +3,6 @@ from flask_cors import CORS
 from InvoiceExtractor import InvoiceExtractor
 import mimetypes
 import json
-import pandas as pd
 from io import StringIO
 
 app = Flask(__name__)
