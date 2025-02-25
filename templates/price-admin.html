@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Price Decision</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .flex-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            flex: 1;
+        }
+        .section {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .section div {
+            flex: 1;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+        }
+        input {
+          padding: 8px 12px;
+        }
+        input[type="number"] {
+          width: 50px;
+        }
+        .small {
+          width: 50px;
+        }
+        select {
+          padding: 8px 12px;
+          width: 200px;
+        }
+        .item-list-container {
+            margin-top: 20px;
+            flex: 0 0 30%;
+            margin-left: 20px;
+        }
+        .scrollable-table {
+            max-height: 300px;
+            overflow-y: auto;
+            width: 100%;
+        }
+        #all_items_table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #all_items_table th, #all_items_table td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        #all_items_table th {
+            background-color: #f2f2f2;
+        }
+        #all_items_table th:nth-child(1),
+        #all_items_table td:nth-child(1) {
+            width: 25%;
+        }
+        #all_items_table th:nth-child(2),
+        #all_items_table td:nth-child(2) {
+            width: 75%;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+  <div class="flex-container">
+    <div class="container">
+      <h2>Admin Panel</h2>
+      <div>
+        <label>New Item: <input type="text" id="new_item"></label>
+        <button onclick="createItem()">Create</button>
+      </div>
+      <label>Select Item: 
+          <select id="item_select">
+              <option value="">-- Select Item --</option>
+          </select>
+          <button onclick="deleteItem()">Delete</button>
+      </label>
+      
+      <div class="section">
+          <div>
+              <h3>Market Data</h3>
+              <table>
+                <tr>
+                    <td>Total Qty:</td>
+                    <td><input type="number" id="total_qty" value="0"></td>
+                </tr>
+                <tr>
+                    <td>Total Price:</td>
+                    <td><input type="number" id="total_price" value="0"></td>
+                </tr>
+                <tr>
+                    <td>Cost Per KG:</td>
+                    <td><input type="number" id="cost_per_kg" readonly value="0"></td>
+                </tr>
+            </table>
+          </div>
+          <div>
+            <h3>Decision for Main</h3>
+            <table>
+              <tr>
+                <tr></tr>
+                <td>Note:</td>
+                <td><input type="text" id="note_main_value" class="small"></td>
+                <td><label id="note_main"></label></td>
+              </tr>
+              <tr>
+                <td>MRP % from LC:</td>
+                <td><input type="number" id="mrp_main_value" value="0"></td>
+                <td><label id="mrp_main">0</label></td>
+              </tr>
+              <tr>
+                <tr></tr>
+                <td>SP % from MRP:</td>
+                <td><input type="number" id="sp_main_value" value="0"></td>
+                <td><label id="sp_main">0</label></td>
+              </tr>
+            </tr>
+          </table>
+          </div>
+      </div>
+      
+      <h3>Decision for Others from Main</h3>
+      <button onclick="addNextItem()">+ Add</button>
+      <button onclick="saveItem()">Save</button>
+      <label id="status"></label>
+      <p></p>
+      <table id="others_table">
+          <tr>
+              <th>Item Code</th>
+              <th>Item Name</th>
+              <th>Ratio</th>
+              <th>MRP %</th>
+              <th>SP %</th>
+              <th>MRP</th>
+              <th>SP</th>
+              <th>Action</th>
+          </tr>
+      </table>
+    </div>
+    
+    <div class="item-list-container">
+      <h3>All Items</h3>
+      <div class="scrollable-table">
+        <table id="all_items_table">
+          <thead>
+            <tr>
+              <th>Item Code</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Rows will be populated here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+      var allItems = [];
+      var currentItem = {
+        note: "",
+        items: []
+      };
+
+      function updateMain() {
+        document.getElementById("total_qty").value = currentItem.totalQty || 0;
+        document.getElementById("total_price").value = currentItem.totalPrice || 0;
+        document.getElementById("cost_per_kg").value = currentItem.costPerKG || 0;
+
+        document.getElementById("mrp_main_value").value = currentItem.mrpp || 0;
+        document.getElementById("sp_main_value").value = currentItem.spp || 0;
+        document.getElementById("note_main_value").value = currentItem.note || "";
+        document.getElementById("mrp_main").innerText = currentItem.mainMRP || 0;
+        document.getElementById("sp_main").innerText = currentItem.mainSP || 0;
+
+        const table = document.getElementById("others_table");
+        const rowCount = table.rows.length;
+        for (let i = rowCount - 1; i > 0; i--) {
+          table.deleteRow(i);
+        }
+        
+        currentItem.items.forEach((item, i) => {
+          addOtherItem(item, i);
+        });
+      }
+
+      function calculateCostPerKG() {
+          const totalQty = parseFloat(document.getElementById("total_qty").value) || 0;
+          const totalPrice = parseFloat(document.getElementById("total_price").value) || 0;
+          const costPerKG = parseFloat(totalQty > 0 ? (totalPrice / totalQty).toFixed(2) : 0);
+          document.getElementById("cost_per_kg").value = costPerKG;
+          currentItem.totalQty = totalQty;
+          currentItem.totalPrice = totalPrice;
+          currentItem.costPerKG = costPerKG;
+          calculateMain();
+      }
+
+      function calculateMain() {
+        const mrpp = parseFloat(document.getElementById("mrp_main_value").value) || 0;
+        const spp = parseFloat(document.getElementById("sp_main_value").value) || 0;
+        const mainMRP = Math.round(currentItem.costPerKG + (currentItem.costPerKG * mrpp / 100));
+        const mainSP = mainMRP - (mainMRP * spp / 100);
+        document.getElementById("mrp_main").innerText = mainMRP;
+        document.getElementById("sp_main").innerText = mainSP;
+        currentItem.mainMRP = mainMRP;
+        currentItem.mainSP = mainSP;
+
+        updateAllRows();
+      }
+
+      function updatePrices(row, i) {
+        const item = currentItem.items[i];
+        const mrpp = parseFloat(row.cells[2].querySelector("input").value) || 0;
+        const spp = parseFloat(row.cells[3].querySelector("input").value) || 0;
+        const ratio = parseFloat(row.cells[4].querySelector("input").value) || 1;
+
+        item.mrpp = mrpp;
+        item.spp = spp;
+        item.ratio = ratio;
+        
+        item.mrp = Math.round(currentItem.mainMRP * ratio + (currentItem.mainMRP * mrpp / 100));
+        item.sp = Math.round((currentItem.mainSP * ratio + (currentItem.mainSP * spp / 100))*100)/100;
+        
+        row.cells[5].querySelector(".mrp_price").innerText = item.mrp.toFixed(2);
+        row.cells[6].querySelector(".sp_price").innerText = item.sp.toFixed(2);
+      }
+
+      function updateAllRows() {
+        let table = document.getElementById("others_table");
+        let rows = table.getElementsByTagName("tr");
+        for (let i = 1; i < rows.length; i++) {
+          updatePrices(rows[i], i - 1);
+        }
+      }
+
+      function updateNote() {
+        currentItem.note = document.getElementById("note_main_value").value;
+      }
+
+      function updateCode(code, i) {
+        currentItem.items[i].code = code.value;
+      }
+
+      function updateName(name, i) {
+        currentItem.items[i].name = name.value;
+      }
+
+      function updateCurrentItem() {
+        const selectedIndex = document.getElementById("item_select").value;
+        if (selectedIndex !== "") {
+          currentItem = allItems[selectedIndex];
+          updateMain();
+        }
+      }
+
+      document.getElementById("total_qty").addEventListener("input", calculateCostPerKG);
+      document.getElementById("total_price").addEventListener("input", calculateCostPerKG);
+      document.getElementById("mrp_main_value").addEventListener("input", calculateMain);
+      document.getElementById("sp_main_value").addEventListener("input", calculateMain);
+      document.getElementById("note_main_value").addEventListener("input", updateNote);
+      document.getElementById("item_select").addEventListener("change", updateCurrentItem);
+
+      function displayItems() {
+        const selectElement = document.getElementById("item_select");
+        selectElement.innerHTML = "";
+        allItems.forEach((item, index) => {
+          const option = document.createElement("option");
+          option.value = index;
+          option.textContent = item.name;
+          selectElement.appendChild(option);
+        });
+        updateCurrentItem();
+      }
+
+      function addNextItem() {
+        const item = {
+            code: "",
+            name: "",
+            mrpp: 0,
+            spp: 0,
+            mrp: 0,
+            sp: 0,
+            ratio: 1
+        };
+        currentItem.items.push(item);
+        addOtherItem(item, currentItem.items.length - 1);
+      }
+
+      function addOtherItem(item = {}, i = 0) {
+          const table = document.getElementById("others_table");
+          const row = table.insertRow(-1);
+          const cell1 = row.insertCell(0);
+          const cell2 = row.insertCell(1);
+          const cell3 = row.insertCell(2);
+          const cell4 = row.insertCell(3);
+          const cell5 = row.insertCell(4);
+          const cell6 = row.insertCell(5);
+          const cell7 = row.insertCell(6);
+          const cell8 = row.insertCell(7);
+          
+          cell1.innerHTML = '<input type="text" class="item_code small" value="' + (item.code || '') + '" oninput="updateCode(this, ' + i + ')">';
+          cell2.innerHTML = '<input type="text" class="item_name" value="' + (item.name || '') + '" oninput="updateName(this, ' + i + ')">';
+          cell3.innerHTML = '<input type="number" class="ratio_input" value="' + (item.ratio || 1) + '" oninput="updateRatio(this, ' + i + ')" />';
+          cell4.innerHTML = '<input type="number" class="mrp_increment" value="' + (item.mrpp || 0) + '" oninput="updatePrices(this.parentNode.parentNode, ' + i + ')" />';
+          cell5.innerHTML = '<input type="number" class="sp_increment" value="' + (item.spp || 0) + '" oninput="updatePrices(this.parentNode.parentNode, ' + i + ')" />';
+          cell6.innerHTML = '<span class="mrp_price">' + (item.mrp || 0) + '</span>';
+          cell7.innerHTML = '<span class="sp_price">' + (item.sp || 0) + '</span>';
+          cell8.innerHTML = '<button onclick="removeRow(this,' + i + ')">Remove</button>';
+
+          updatePrices(row, i);
+      }
+      
+      function removeRow(button, i) {
+        const row = button.parentNode.parentNode;
+        row.parentNode.removeChild(row);
+        currentItem.items.splice(i, 1);
+      }
+      
+      function updateRatio(input, i) {
+        const item = currentItem.items[i];
+        item.ratio = parseFloat(input.value) || 1;
+        updatePrices(input.closest('tr'), i);
+      }
+
+      function saveItem() {
+        currentItem.totalQty = parseFloat(document.getElementById("total_qty").value) || 0;
+        currentItem.totalPrice = parseFloat(document.getElementById("total_price").value) || 0;
+        currentItem.costPerKG = parseFloat(document.getElementById("cost_per_kg").value) || 0;
+        currentItem.mrpp = parseFloat(document.getElementById("mrp_main_value").value) || 0;
+        currentItem.spp = parseFloat(document.getElementById("sp_main_value").value) || 0;
+        currentItem.note = document.getElementById("note_main_value").value;
+
+        fetch('/price-update', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(currentItem)
+        })
+        .then(response => response.json())
+        .then(result => {
+          document.getElementById("status").innerText = result.message;
+          displayAllItems();
+        })
+        .catch(error => {
+          document.getElementById("status").innerText = "Error saving data!";
+        });
+      }
+
+      function createItem() {
+        fetch('/price-create', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: document.getElementById("new_item").value
+        })
+        .then(response => response.json())
+        .then(result => {
+          document.getElementById("status").innerText = result.message;
+          loadData();
+        })
+        .catch(error => {
+          document.getElementById("status").innerText = "Error saving data!";
+        });
+      }
+
+      function deleteItem() {
+        fetch('/price-delete', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: currentItem.name
+        })
+        .then(response => response.json())
+        .then(result => {
+          document.getElementById("status").innerText = result.message;
+          loadData();
+        })
+        .catch(error => {
+          document.getElementById("status").innerText = "Error saving data!";
+        });
+      }
+
+      function displayAllItems() {
+          const allItemsTable = document.getElementById("all_items_table").getElementsByTagName('tbody')[0];
+          const rowCount = allItemsTable.rows.length;
+          for (let i = rowCount - 1; i >= 0; i--) {
+              allItemsTable.deleteRow(i);
+          }
+          allItems.forEach(item => {
+              item.items.forEach(i => {
+                  const row = allItemsTable.insertRow(-1);
+                  const cell1 = row.insertCell(0);
+                  const cell2 = row.insertCell(1);
+                  cell1.innerHTML = `<div>${i.code}</div><div>(${i.ratio})</div>`;
+                  cell2.innerHTML = `<div>${i.name}</div><div>MRP: ${i.mrp} (${i.mrpp}%), SP: ${i.sp} (${i.spp}%)</div>`;
+              });
+          });
+      }
+
+      function loadData() {
+        fetch('/price-load', {
+          method: 'GET',
+          headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(result => {
+          allItems = result;
+          displayItems();
+          displayAllItems();
+        })
+        .catch(error => {
+          document.getElementById("status").innerText = "Error loading data!";
+        });
+      }
+      loadData();
+  </script>
+</body>
+</html>

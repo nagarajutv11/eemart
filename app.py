@@ -6,12 +6,24 @@ import json
 from io import StringIO
 
 app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 CORS(app)
 
-ie = InvoiceExtractor("AIzaSyDG861YemUvZMjlrVToPafrZ2cGZ8df9Rc")
+def read_dict_from_file(file_path: str) -> dict:
+    result = {}
+    with open(file_path, 'r') as file:
+        for line in file:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                key, value = line.split('=', 1)
+                result[key.strip()] = value.strip()
+    return result
+vars = read_dict_from_file('vars.env')
+ie = InvoiceExtractor(vars['GEMINI_API_KEY'])
 
 # File to store vendor data
 FILE_PATH = "vendors.json"
+PRICE_PATH = "prices.json"
 
 # Load vendors from the file at startup
 def load_vendors():
@@ -85,6 +97,69 @@ def process_file():
         return jsonify({'error': 'File not supported ' + mime_type}), 400
         
     return jsonify({'data': data}), 200
+
+def read_json_file(filename):
+    try:
+        with open(filename, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        return data
+    except Exception as e:
+        return []
+
+def write_json_file(filename, data):
+    with open(filename, "w", encoding="utf-8") as file:
+        json.dump(data, file, indent=4)
+
+@app.route('/price-admin')
+def price_admin():
+    return render_template('price-admin.html')
+
+@app.route('/price-calculator')
+def price_calculator():
+    return render_template('price-calculator.html')
+
+@app.route("/price-load", methods=["GET"])
+def price_load():
+    data = read_json_file(PRICE_PATH)
+    return jsonify(data)
+
+@app.route("/price-create", methods=["POST"])
+def price_create():
+    name = request.get_data(as_text=True)
+    data = read_json_file(PRICE_PATH)
+    data.append({
+        "name": name,
+        "note": "",
+        "items": []
+    })
+    write_json_file(PRICE_PATH, data)
+
+    return jsonify({"message": "Object added successfully", "data": name}), 201
+
+@app.route("/price-update", methods=["POST"])
+def price_update():
+    updated = request.json
+    data = read_json_file(PRICE_PATH)
+    for obj in data:
+        if obj.get("name") == updated.get("name"):
+            obj.pop("items")
+            obj.update(updated)
+            write_json_file(PRICE_PATH, data)
+            return jsonify({"message": "Object updated successfully", "data": updated}), 200
+
+    return jsonify({"error": "Object not found"}), 404
+
+@app.route("/price-delete", methods=["POST"])
+def price_delete():
+    name = request.get_data(as_text=True)
+    data = read_json_file(PRICE_PATH)
+    new_data = [obj for obj in data if obj.get("name") != name]
+
+    if len(new_data) == len(data):
+        return jsonify({"error": "Object not found"}), 404  # No object was removed
+
+    write_json_file(PRICE_PATH, new_data)
+    return jsonify({"message": "Object deleted successfully"}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8081)
