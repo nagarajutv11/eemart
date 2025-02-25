@@ -235,9 +235,9 @@
 
       function updatePrices(row, i) {
         const item = currentItem.items[i];
-        const mrpp = parseFloat(row.cells[2].querySelector("input").value) || 0;
-        const spp = parseFloat(row.cells[3].querySelector("input").value) || 0;
-        const ratio = parseFloat(row.cells[4].querySelector("input").value) || 1;
+        const ratio = parseFloat(row.cells[2].querySelector("input").value) || 1;
+        const mrpp = parseFloat(row.cells[3].querySelector("input").value) || 0;
+        const spp = parseFloat(row.cells[4].querySelector("input").value) || 0;
 
         item.mrpp = mrpp;
         item.spp = spp;

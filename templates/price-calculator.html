@@ -1,409 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Vendor Voucher</title>
-  <style>
-    .vendor {
-      display: ruby;
-    }
-    .popup {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-
-    .popup-content {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background-color: white;
-        padding: 20px;
-        border-radius: 5px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    .container {
-      display: flex;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .invoice {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);  /* Creates two equal columns */
-        gap: 15px;  /* Adds space between columns */
-    }
-
-    .input-column {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .input-column label {
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-
-    .input-column input {
-        padding: 8px;
-        margin-bottom: 15px;
-        box-sizing: border-box;
-    }
-    button {
-      height: 30px;
-    }
-    .vertical-line {
-      margin: 8px;
-      width: 2px;       /* Set the height of the line */
-      background-color: black; /* Set the color of the line */
-  }
-
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Calculator</title>
+    <style>
+      table {
+          border-collapse: collapse;
+          margin-bottom: 20px;
+      }
+      th, td {
+          border: 1px solid black;
+          padding: 8px;
+          text-align: left;
+      }
+      th {
+          background-color: #f2f2f2;
+      }
+      input {
+        padding: 8px 12px;
+      }
+      select {
+        padding: 8px 12px;
+        width: 200px;
+      }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="input-column">
-      <h1>Vendor Voucher Generator</h1>
-      
-      <div class="vendor">
-        <pre id="all-details">Vendors not loaded yet</pre>
+    <h2>Price Calculator</h2>
+    
+    <h3>Customer Input</h3>
+    <div>
+      <label>Select Item: 
+          <select id="customer_item_select" onchange="calculateCustomerMRP()">
+              <option value="">-- Select Item --</option>
+          </select>
+      </label>
+      <div>
+        <h3>Market Data</h3>
+        <table>
+          <tr>
+              <td>Total Qty:</td>
+              <td><input type="number" id="total_qty" value="0" oninput="calculateCustomerMRP()"></td>
+          </tr>
+          <tr>
+              <td>Total Price:</td>
+              <td><input type="number" id="total_price" value="0" oninput="calculateCustomerMRP()"></td>
+          </tr>
+          <tr>
+              <td>Cost Per Unit:</td>
+              <td><input type="number" id="cost_per_kg" value="0" oninput="calculateCustomerMRP(true)"></td>
+          </tr>
+        </table>
+        <label id="final_cost_per_unit"></label>
       </div>
-      <br/>
-      
-      <div class="vendor">
-        <h2>Vendor Details</h2>
-        <button type="button" onclick="openVendorPopup()">Add New Vendor</button>
-        <select id="vendor-selector" onchange="displayVendorDetails()">
-          <option value="" disabled selected>Select Vendor</option>
-        </select>
-      </div>
-      <br/>
-      
-      <div id="vendor-details"></div>
-      <br/>
-      
-      <h2>Invoice Details</h2>
-      <div class="invoice">
-        <div class="input-column">
-          <label for="delivery-date">Delivery Date</label>
-          <input type="date" id="delivery-date" placeholder="Delivery Date" required value="">
-        </div>
-        
-        <div class="input-column">
-          <label for="invoice-number">Invoice Number</label>
-          <input type="text" id="invoice-number" placeholder="Invoice Number" required value="">
-        </div>
-        
-        <div class="input-column">
-          <label for="invoice-amount">Invoice Amount</label>
-          <input type="number" id="invoice-amount" placeholder="Invoice Amount" required value="">
-        </div>
-        
-        <div class="input-column">
-          <label for="return-amount">Return Amount</label>
-          <input type="number" id="return-amount" placeholder="Return Amount" required value="">
-        </div>
-        
-        <div class="input-column">
-          <label for="payment-days">Payment Days</label>
-          <input type="number" id="payment-days" placeholder="Payment Days" required value="20">
-        </div>
-      </div>
-      
-      <br/>
-      <button type="button" onclick="generateVoucher()">View Voucher</button>
     </div>
-
-    <div class="vertical-line"></div>
-
-    <div class="output-column">
-      <div id="output" style="width: 80mm;">Voucher will be generated here</div>
-      <button type="button" onclick="printDiv()">Print Voucher</button>
-    </div>
-  </div>
-
-
-  <div class="popup" id="vendor-popup">
-        <div class="popup-content">
-        	<div class="input-column">
-	            <h2>Add New Vendor</h2>
-              <div class="input-column">
-                <label for="delivery-date">Vendor Name</label>
-                <input type="text" id="vendor-name" placeholder="Vendor Name" required value="">
-              </div>
-              <div class="input-column">
-                <label for="delivery-date">Vendor Contact</label>
-                <input type="text" id="vendor-contact" placeholder="Vendor Contact" required value="">
-              </div>
-              <div class="input-column">
-                <label for="delivery-date">Vendor Email</label>
-                <input type="text" id="vendor-email" placeholder="Vendor Email" required value="">
-              </div>
-              <div class="input-column">
-                <label for="delivery-date">Vendor GSTN</label>
-                <input type="text" id="vendor-gstn" placeholder="Vendor GSTN" required value="">
-              </div>
-	            <button type="button" onclick="addNewVendor()">Add Vendor</button>
-	            <button type="button" onclick="closeVendorPopup()">Cancel</button>
-        	</div>
-        </div>
-  </div>
-
-  <script>
-    const apiUrl = "/vendors";
-  	var vendors;
-    async function saveVendor(vendor) {
-      try {
-          const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(vendor),
-          });
-
-          if (!response.ok) {
-              throw new Error(`Error: ${response.status} - ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          console.log("Vendor saved successfully:", data.vendor);
-          return data;
-      } catch (error) {
-          console.error("Failed to save vendor:", error.message);
-          return null;
-      }
-    }
-    async function getAllVendors() {
-      try {
-          
-          const response = await fetch(apiUrl, {
-              method: 'GET',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-          });
-
-          if (!response.ok) {
-              throw new Error(`Error: ${response.status} - ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          console.log("Vendors fetched successfully:", data.vendors);
-          return data.vendors;
-      } catch (error) {
-          console.error("Failed to fetch vendors:", error.message);
-          return [];
-      }
-    }
-    getAllVendors(apiUrl).then(vs => {
-      vendors = vs;
-      showVendors(-1);
-    });
-    document.getElementById('delivery-date').value = new Date().toISOString().split('T')[0];
-
-	
-	  function openVendorPopup() {
-        document.getElementById('vendor-popup').style.display = 'block';
-    }
-    function closeVendorPopup() {
-        document.getElementById('vendor-popup').style.display = 'none';
-    }
-
-    function addNewVendor() {
-      const vendorName = document.getElementById('vendor-name').value;
-      const vendorContact = document.getElementById('vendor-contact').value;
-      const vendorEmail = document.getElementById('vendor-email').value;
-      const vendorGSTN = document.getElementById('vendor-gstn').value;
-      const vendor = {
-        'name': vendorName,
-        'contact': vendorContact,
-        'email': vendorEmail,
-        'gstn': vendorGSTN
-      }
-      vendors.push(vendor);
-      saveVendor(vendor).then(response => {
-          if (response) {
-              console.log("Response:", response);
-          } else {
-              console.log("Vendor save failed.");
-          }
-      });
-      closeVendorPopup();
-      showVendors(vendors.length - 1);
-      displayVendorDetails();
-    }
-
-    function showVendors(si) {
-      document.getElementById('all-details').textContent = vendors.length + ' Vendors avaiable';
-      const selectElement = document.getElementById("vendor-selector");
-      selectElement.innerHTML = '';
-      const newOption = document.createElement("option");
-      newOption.value = -1;
-      newOption.textContent = 'Select Vendor';
-      selectElement.appendChild(newOption);
-
-      vendors.forEach((v, i) => {
-        const newOption = document.createElement("option");
-        newOption.value = i;
-        newOption.textContent = v.name;
-        if (i === si) {
-          newOption.selected = true;
-        }
-        selectElement.appendChild(newOption);
-      });
-    }
-
-    function displayVendorDetails() {
-      const selectElement = document.getElementById("vendor-selector");
-      const index = selectElement.value;
-      const vendor = vendors[index];
-      const detailsDiv = document.getElementById("vendor-details");
-      detailsDiv.innerHTML = `
-        <strong>Name:</strong> ${vendor.name} <br>
-        <strong>Email:</strong> ${vendor.email} <br>
-        <strong>Contact:</strong> ${vendor.contact} <br>
-        <strong>GSTN:</strong> ${vendor.gstn}
-      `;
-      generateVoucher();
-    }
-
-    function generateVoucher() {
-      const companyName = 'EE Mart';
-      const companyAddress = 'H.NO 30/A, STREET NO 4, SRI BALAJI NAGAR COLONY, Manikonda, Puppalguda, Hyd-89';
-      const companyContact = '+91 9490240972';
-      const companyGSTN = '36BNFPP4883B2ZU';
-
-      const selectElement = document.getElementById("vendor-selector");
-      const index = selectElement.value;
-      const vendor = vendors[index];
-
-      const deliveryDate = document.getElementById('delivery-date').value;
-      const invoiceNumber = document.getElementById('invoice-number').value;
-      const invoiceAmount = document.getElementById('invoice-amount').value;
-      const returnAmount = document.getElementById('return-amount').value;
-      const paymentDays = document.getElementById('payment-days').value;
-
-      const netAmount = invoiceAmount - returnAmount;
-      const paymentAdviceDate = new Date(new Date(deliveryDate).getTime() + paymentDays * 24 * 60 * 60 * 1000);
-
-      const voucherContent = `
-<div style="width: 350px; argin: 0 auto; page-break-after: always;">
-  <div style="text-align: center;">
-    <div style="font-size: 24px; font-weight: bold;">${companyName}</div>
-    <div>${companyAddress}</div>
-    <div>Ph: ${companyContact}</div>
-    <div>GSTN: ${companyGSTN}</div>
-  </div>
-
-  <div style="text-align: center; margin: 15px 0;">
-    <div style="border: 2px solid black; padding: 5px; display: inline-block;">
-      <div style="font-size: 20px; font-weight: bold;">Proof Of Delivery</div>
-    </div>
-  </div>
-
-  <div style="margin: 10px 0;">
-    <table style="width: 100%;">
-      <tr>
-        <td style="width: 40%;">Supplier:</td>
-        <td style="font-weight: bold;">${vendor.name}</td>
-      </tr>
-      <tr>
-        <td>Delivery Date:</td>
-        <td style="font-weight: bold;">${deliveryDate}</td>
-      </tr>
-      <tr>
-        <td>Contact:</td>
-        <td>${vendor.contact}</td>
-      </tr>
-      <tr>
-        <td>Email:</td>
-        <td>${vendor.email}</td>
-      </tr>
-      <tr>
-        <td>GSTN:</td>
-        <td>${vendor.gstn}</td>
-      </tr>
+    
+    <h3>Calculated Prices</h3>
+    <table id="customer_prices_table">
+        <tr>
+            <th>Item Code</th>
+            <th>Item Name</th>
+            <th>MRP</th>
+            <th>SP</th>
+        </tr>
+        <!-- Rows will be populated here -->
     </table>
-  </div>
 
-  <div style="border: 1px dashed black; margin: 15px 0;"></div>
+    <script>
+        var allItems = []; // This will hold the items data
 
-  <div style="text-align: center; font-size: 18px; font-weight: bold;">Invoice Details</div>
-
-  <div style="margin: 10px 10px;">
-    <table style="width: 100%;">
-      <tr>
-        <td>Invoice No:</td>
-        <td>${invoiceNumber}</td>
-      </tr>
-      <tr>
-        <td>Invoice Amount:</td>
-        <td style="font-weight: bold;">₹${invoiceAmount}</td>
-      </tr>
-      <tr>
-        <td>Return Amount:</td>
-        <td style="font-weight: bold;">₹${returnAmount}</td>
-      </tr>
-    </table>
-  </div>
-
-  <div style="text-align: center; margin: 15px 0;">
-    <div style="font-size: 20px;">Amount to be paid:</div>
-    <div style="font-size: 24px; font-weight: bold;">₹${netAmount}</div>
-  </div>
-
-  <div style="margin: 10px 0;">
-    <div>Payment Terms:</div>
-    <div style="margin-left: 10px;">
-      • ${paymentDays} Days from delivery date </br>
-      • Due on ${paymentAdviceDate.toDateString()}
-    </div>
-  </div>
-
-  <div style="margin: 20px 0;">
-    <div>Recipient's Signature:</div>
-  </div></br></br></br>
-
-  <div style="border: 1px dashed black; margin: 15px 0;"></div>
-
-  <div style="text-align: center; font-style: italic;">
-    Thank you for your business
-  </div>
-  </br></br>
-</div>
-`;
-
-      document.getElementById('output').innerHTML = voucherContent;
-    }
-
-    function printDiv() {
-            // Get the div content
-            const divContent = document.getElementById("output").innerHTML;
-
-            // Create a new window for printing
-            const printWindow = window.open("", "_blank");
-
-            // Add the content and styles to the new window
-            printWindow.document.open();
-            printWindow.document.write(`
-                <html>
-                <head>
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                        }
-                    </style>
-                </head>
-                <body onload="window.print();window.close();">
-                    ${divContent}
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
+        function displayCustomerItems() {
+            const selectElement = document.getElementById("customer_item_select");
+            selectElement.innerHTML = "";
+            allItems.forEach((item, index) => {
+                const option = document.createElement("option");
+                option.value = index;
+                option.textContent = item.name;
+                selectElement.appendChild(option);
+            });
+            calculateCustomerMRP(); // Calculate MRP when items are loaded
         }
-  </script>
+
+        function calculateCustomerMRP(fromUnit = false) {
+            const selectedIndex = document.getElementById("customer_item_select").value;
+            const totalQty = parseFloat(document.getElementById("total_qty").value) || 0;
+            const totalPrice = parseFloat(document.getElementById("total_price").value) || 0;
+            const costPerUnit = parseFloat(document.getElementById("cost_per_kg").value) || 0;
+            // Clear previous rows in the calculated prices table
+            const table = document.getElementById("customer_prices_table");
+            const rowCount = table.rows.length;
+            for (let i = rowCount - 1; i > 0; i--) {
+                table.deleteRow(i);
+            }
+
+            if (selectedIndex !== "") {
+                const item = allItems[selectedIndex];
+                const costPerKG = fromUnit ? costPerUnit : (totalQty > 0 ? (totalPrice / totalQty) : 0);
+                document.getElementById("final_cost_per_unit").innerText = "Cost Per Unit: " + costPerKG;
+                const mainMRP = Math.round(costPerKG + (costPerKG * item.mrpp / 100));
+                const mainSP = Math.round(mainMRP - (mainMRP * item.spp / 100));
+                // Iterate through sub-items and calculate MRP and SP
+                item.items.forEach(subItem => {
+                    // calculate MRP and SP for sub-item
+                    const mrp = Math.round(mainMRP * subItem.ratio + (mainMRP * subItem.mrpp / 100));
+                    const sp = Math.round((mainSP * subItem.ratio + (mainSP * subItem.spp / 100))*100)/100;
+
+                    // Update the customer prices table
+                    const row = table.insertRow(-1);
+                    row.insertCell(0).innerText = subItem.code;
+                    row.insertCell(1).innerText = subItem.name;
+                    row.insertCell(2).innerText = mrp;
+                    row.insertCell(3).innerText = sp;
+                });
+            }
+        }
+
+        function loadItems() {
+            fetch('/price-load', {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(response => response.json())
+            .then(result => {
+                allItems = result; // Assuming the result is an array of items
+                displayCustomerItems(); // Populate the dropdown
+            })
+            .catch(error => {
+                console.error("Error loading items:", error);
+            });
+        }
+
+        // Call this function to load items when the page loads
+        loadItems();
+    </script>
 </body>
 </html>
