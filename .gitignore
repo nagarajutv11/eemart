@@ -2,3 +2,4 @@ __pycache__/
 uploads/
 vars.env
 prices.json
+data/

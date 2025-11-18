@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .tabs { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 20px; }
+        .tab {
+            padding: 10px 30px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            outline: none;
+            font-size: 16px;
+            border-bottom: 2px solid transparent;
+            transition: border 0.2s;
+        }
+        .tab.active { border-bottom: 2px solid #007bff; color: #007bff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], input[type="date"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button[type="submit"] {
+            padding: 8px 20px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button[type="submit"]:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="tabs">
+        <button class="tab active" data-tab="stock">Stock</button>
+        <button class="tab" data-tab="expired">Expired</button>
+        <button class="tab" data-tab="result">Result</button>
+    </div>
+    <div id="stock" class="tab-content active">
+        <form id="stockForm">
+            <div class="form-group">
+                <label for="stockUser">User</label>
+                <input type="text" id="stockUser" name="user" required>
+            </div>
+            <div class="form-group">
+                <label for="stockBarcode">Barcode</label>
+                <input type="text" id="stockBarcode" name="barcode" required>
+            </div>
+            <div class="form-group">
+                <label for="stockMFGDate">MFG Date</label>
+                <input type="date" id="stockMFGDate" name="mfgdate" required>
+            </div>
+            <div class="form-group">
+                <label for="stockDays">Days</label>
+                <input type="number" id="stockDays" name="days" required>
+            </div>
+            <div class="form-group">
+                <label for="stockExpDate">Exp Date</label>
+                <input type="date" id="stockExpDate" name="expdate" required>
+            </div>
+            <div class="form-group">
+                <label for="stockQty">Qty</label>
+                <input type="number" id="stockQty" name="qty" required>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+    <div id="expired" class="tab-content">
+        <form id="expiredForm">
+            <div class="form-group">
+                <label for="expiredUser">User</label>
+                <input type="text" id="expiredUser" name="user" required>
+            </div>
+            <div class="form-group">
+                <label for="expiredBarcode">Barcode</label>
+                <input type="text" id="expiredBarcode" name="barcode" required>
+            </div>
+            <div class="form-group">
+                <label for="expiredQty">Qty</label>
+                <input type="number" id="expiredQty" name="qty" required>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+    <div id="result" class="tab-content">
+        <div id="result-summary" style="margin-bottom:20px;"></div>
+        <div id="user-cards" style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px;"></div>
+    <div id="result-grid"></div>
+    <div id="user-daily-grid" style="margin-top:24px;"></div>
+    </div>
+    <script>
+        // --- Expired tab logic ---
+        const expiredForm = document.getElementById('expiredForm');
+        expiredForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            let valid = true;
+            Array.from(expiredForm.elements).forEach(el => {
+                if (el.hasAttribute('required') && !el.value) {
+                    el.style.borderColor = 'red';
+                    valid = false;
+                } else {
+                    el.style.borderColor = '';
+                }
+            });
+            if (!valid) return;
+
+            const user = document.getElementById('expiredUser').value;
+            const barcode = document.getElementById('expiredBarcode').value;
+            const qty = Number(document.getElementById('expiredQty').value);
+            function pad(n) { return n < 10 ? '0' + n : n; }
+            const now = new Date();
+            const createdon = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+            const payload = { user, barcode, qty, createdon };
+
+            fetch('/expired', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async resp => {
+                if (!resp.ok) throw new Error(await resp.text());
+                alert('Expired submitted successfully!');
+                document.getElementById('expiredBarcode').value = '';
+                document.getElementById('expiredQty').value = '';
+            })
+            .catch(err => {
+                alert('Failed to submit expired: ' + err.message);
+            });
+        });
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                document.getElementById(tab.dataset.tab).classList.add('active');
+                if (tab.dataset.tab === 'result') {
+                    loadResults();
+                }
+            });
+        });
+
+        // --- Stock tab logic ---
+        function formatDate(date) {
+            // Returns yyyy-mm-dd
+            return date.toISOString().slice(0, 10);
+        }
+
+        function addDays(date, days) {
+            const d = new Date(date);
+            d.setDate(d.getDate() + Number(days));
+            return d;
+        }
+
+        const stockForm = document.getElementById('stockForm');
+        const mfgInput = document.getElementById('stockMFGDate');
+        const daysInput = document.getElementById('stockDays');
+        const expInput = document.getElementById('stockExpDate');
+
+        // Set defaults on page load
+        function setStockDefaults() {
+            const today = new Date();
+            mfgInput.value = formatDate(today);
+            daysInput.value = 60;
+            expInput.value = formatDate(addDays(today, 60));
+        }
+        setStockDefaults();
+
+        // When MFGDate or Days changes, update ExpDate
+        function updateExpDate() {
+            if (mfgInput.value && daysInput.value) {
+                const mfgDate = new Date(mfgInput.value);
+                const days = Number(daysInput.value);
+                expInput.value = formatDate(addDays(mfgDate, days));
+            }
+        }
+
+        // When ExpDate and Days changes, update MFGDate
+        function updateMfgDateFromExp() {
+            if (expInput.value && daysInput.value) {
+                const expDate = new Date(expInput.value);
+                const days = Number(daysInput.value);
+                const mfgDate = addDays(expDate, -days);
+                mfgInput.value = formatDate(mfgDate);
+            }
+        }
+
+        // When ExpDate and MFGDate changes, update Days
+        function updateDaysFromDates() {
+            if (mfgInput.value && expInput.value) {
+                const mfgDate = new Date(mfgInput.value);
+                const expDate = new Date(expInput.value);
+                const diff = Math.round((expDate - mfgDate) / (1000 * 60 * 60 * 24));
+                daysInput.value = diff;
+            }
+        }
+
+        mfgInput.addEventListener('change', () => {
+            updateExpDate();
+        });
+        daysInput.addEventListener('change', () => {
+            updateExpDate();
+        });
+        expInput.addEventListener('change', () => {
+            updateMfgDateFromExp();
+        });
+
+        // On submit, validate required fields and clear on success
+        stockForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            let valid = true;
+            Array.from(stockForm.elements).forEach(el => {
+                if (el.hasAttribute('required') && !el.value) {
+                    el.style.borderColor = 'red';
+                    valid = false;
+                } else {
+                    el.style.borderColor = '';
+                }
+            });
+            if (!valid) return;
+
+            // Prepare payload for /stock API
+            const user = document.getElementById('stockUser').value;
+            const barcode = document.getElementById('stockBarcode').value;
+            const mfgdate = document.getElementById('stockMFGDate').value;
+            const days = Number(document.getElementById('stockDays').value);
+            const expdate = document.getElementById('stockExpDate').value;
+            const qty = Number(document.getElementById('stockQty').value);
+            // Format createdon as YYYY-MM-DD HH:MM:SS
+            function pad(n) { return n < 10 ? '0' + n : n; }
+            const now = new Date();
+            const createdon = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+            const payload = { user, barcode, mfgdate, days, expdate, qty, createdon };
+
+            fetch('/stock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async resp => {
+                if (!resp.ok) throw new Error(await resp.text());
+                alert('Stock submitted successfully!');
+                // Only reset non-user fields
+                document.getElementById('stockBarcode').value = '';
+                document.getElementById('stockMFGDate').value = formatDate(new Date());
+                document.getElementById('stockDays').value = 60;
+                document.getElementById('stockExpDate').value = formatDate(addDays(new Date(), 60));
+                document.getElementById('stockQty').value = '';
+            })
+            .catch(err => {
+                alert('Failed to submit stock: ' + err.message);
+            });
+        });
+
+        // When switching to Stock tab, reset defaults
+        document.querySelector('.tab[data-tab="stock"]').addEventListener('click', setStockDefaults);
+
+        // --- End Stock tab logic ---
+
+        async function loadResults() {
+            const summaryDiv = document.getElementById('result-summary');
+            const userDailyGridDiv = document.getElementById('user-daily-grid');
+            summaryDiv.innerHTML = 'Loading...';
+            userDailyGridDiv.innerHTML = '';
+            try {
+                const response = await fetch('/results');
+                const data = await response.json();
+                if (!Array.isArray(data)) throw new Error('Invalid data');
+
+                // Calculate totals
+                let totalStock = 0, totalExpired = 0;
+                data.forEach(r => {
+                    totalStock += r.stock;
+                    totalExpired += r.expired;
+                });
+                summaryDiv.innerHTML = `<b>Total Stock:</b> ${totalStock} &nbsp; <b>Total Expired:</b> ${totalExpired}`;
+
+                // User cards
+                const userMap = {};
+                data.forEach(r => {
+                    if (!userMap[r.user]) userMap[r.user] = { stock: 0, expired: 0 };
+                    userMap[r.user].stock += r.stock;
+                    userMap[r.user].expired += r.expired;
+                });
+                // User daily grid: rows = users, columns = dates, cells = stock/expired for that user/date
+                const users = Array.from(new Set(data.map(r => r.user))).sort();
+                const dates = Array.from(new Set(data.map(r => r.date))).sort();
+                let userGridHtml = '';
+                userGridHtml += '<div style="overflow-x:auto;"><table border="1" style="border-collapse:collapse;table-layout:auto;">';
+                // Header row: users
+                userGridHtml += '<tr><th style="padding:2px;">Day</th>' + users.map(u => `<th style=\"padding:2px;\">${u}</th>`).join('') + '</tr>';
+                // Rows: dates
+                dates.forEach(date => {
+                    // Show only day part
+                    let day = '-';
+                    if (date && date.length >= 10) {
+                        day = date.slice(-2);
+                        if (day.startsWith('0')) day = day.slice(1);
+                    }
+                    userGridHtml += `<tr><td style=\"padding:2px;\"><b>${day}</b></td>`;
+                    users.forEach(user => {
+                        const rec = data.find(r => r.user === user && r.date === date);
+                        if (rec) {
+                            userGridHtml += `<td style=\"padding:2px;\">${rec.stock} - ${rec.expired}</td>`;
+                        } else {
+                            userGridHtml += '<td style=\"padding:2px;\">-</td>';
+                        }
+                    });
+                    userGridHtml += '</tr>';
+                });
+                userGridHtml += '</table></div>';
+                userDailyGridDiv.innerHTML = userGridHtml;
+            } catch (e) {
+                summaryDiv.innerHTML = '<span style="color:red">Failed to load results.</span>';
+            }
+        }
+    </script>
+</body>
+</html>
