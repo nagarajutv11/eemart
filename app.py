@@ -12,7 +12,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 CORS(app)
 
 # Data directory
-DATA_DIR = 'data'
+DATA_DIR = '../data'
 STOCK_FILE = os.path.join(DATA_DIR, 'stock.json')
 EXPIRED_FILE = os.path.join(DATA_DIR, 'expired.json')
 # Ensure data directory exists
